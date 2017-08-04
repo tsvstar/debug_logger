@@ -7,7 +7,7 @@
 **********************************************************************/
 
 // @tsv TEMPORARY
-#undef __GNUG__
+//#undef __GNUG__
 
 #define BACKTRACE_AVAILABLE 0
 #define ADDR2LINE_AVAILABLE 0

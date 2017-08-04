@@ -12,7 +12,7 @@
 
 #define CPP11_FEATURES (__cplusplus >= 201103L)    // Explicit define are C++11 feature available
 // @tsv TEMPORARY
-#define CPP11_FEATURES 0
+//#define CPP11_FEATURES 0
 
 #include <string>
 #include <type_traits>
