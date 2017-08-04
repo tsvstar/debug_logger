@@ -1,5 +1,5 @@
-#ifndef TOSTR_HANDLER_H
-#define TOSTR_HANDLER_H 1
+#ifndef TOSTR_HANDLER_H_
+#define TOSTR_HANDLER_H_ 1
 
 /*********************************************************************
   Purpose: Universal tuneable conversion to string
@@ -11,11 +11,13 @@
 **********************************************************************/
 
 #define CPP11_FEATURES (__cplusplus >= 201103L)    // Explicit define are C++11 feature available
+// @tsv TEMPORARY
 #define CPP11_FEATURES 0
 
 #include <string>
 #include <type_traits>
-#include <typeinfo>
+#include <typeinfo>         // typeid
+#include <cstdarg>          // va_list
 #if CPP11_FEATURES
 #include <memory>           // for unique_ptr,shared_ptr, weak_ptr handlers
 #else
@@ -27,6 +29,10 @@ namespace tsv{ namespace debug {
     std::string demangle(const char* name);
 }}
 
+// Forward declarations
+class TrackedItem;
+/** ... add your own classes here ***/
+
 /********* MAIN PART **********/
 
 namespace tsv {
@@ -37,13 +43,14 @@ namespace tostr{
 // Auxiliary function to decode pointer to hex string
 std::string hex_addr( const void* ptr );
 
-// String conversion modes
-enum ToStrEnum
-{
-    ENUM_TOSTR_DEFAULT,  // as string: value
-    ENUM_TOSTR_REPR,     // as representation: "value"
-    ENUM_TOSTR_EXTENDED  // extended info
-};
+/************************* SPRINTF-like functions  *******************************/
+
+// Like sprintf, but returns std::string instead of using charbuf
+std::string strfmt( const std::string& fmt_str, ... );
+
+// Similar to vsprintf, but return std::string
+std::string strfmtVA( const std::string& fmt_str, va_list* args );
+
 
 /******************************************************
   toStr() internal processors implementations for types
@@ -51,6 +58,14 @@ enum ToStrEnum
   NOTE: processors are separated from main toStr() to
         make automatic dereferencing
 *******************************************************/
+
+// String conversion modes
+enum ToStrEnum
+{
+    ENUM_TOSTR_DEFAULT,  // as string: value
+    ENUM_TOSTR_REPR,     // as representation: "value"
+    ENUM_TOSTR_EXTENDED  // extended info
+};
 
 namespace impl
 {
@@ -106,25 +121,30 @@ ToStringRV __toString( const weak_ptr<T>& value, int mode  )
 /**
        ... Your own classes special handlers  ...
 
-You may declare here all your special handlers. And define them inside of .cpp or your own sources.
-NOTE: Have to use this section ( instead of toStr() ) to correct displaying of auto-dereferenced values.
+To correct processing (and auto-dereferencing) your own classes forward declaration of handler have to be placed here
+  and forward declaration of that class have to be placed in beginning of this file.
+NOTE: Do not use specific to your class version of toStr(), otherwise pointers to it will not be auto-dereferenced
 
 Example:
 
-here:
+in beginning of this file:
     class YourClass;
+here:
     ToStringRV toStr( const YourClass& value, int mode );
 
 in .c:
    #include "tostr_handler.h"
    namespace tsv { namespace util { namespace tostr { namespace impl {
-        ToStringRV __toString( const YourClass& value, int mode )
+        ToStringRV __toString( const ::YourClass& value, int mode )
         {
             // Return: { VALUE_STD::STRING, true }
             return { "value", true };
         }
    } } } }
 **/
+
+    // That is sample class from test_objlog
+    ToStringRV __toString( const ::TrackedItem& value, int mode );
 
 }  // namespace impl
 

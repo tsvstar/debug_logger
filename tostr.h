@@ -1,5 +1,5 @@
-#ifndef TOSTR_H
-#define TOSTR_H 1
+#ifndef TOSTR_H_
+#define TOSTR_H_ 1
 
 /*********************************************************************
   Purpose: Display named variables and expression
@@ -11,10 +11,16 @@
 #include <vector>
 #include "tostr_handler.h"
 
-// Print to string list of args with their names
+/******************** MACRO TO USE ***********************************/
+
+// Print to string list of arguments with their names
 //   Example:  std::cout << TOSTR_ARGS( str_var, " abc", 3, !func(arg) ) << "\n";
-//   Output:   strvar = "VALUE1", " abc" = " abc", 3 = 3, !func(arg) = VALUE2
+//   Output:   strvar = "VALUE1" abc, 3 = 3, !func(arg) = VALUE2
 #define TOSTR_ARGS(...) ::tsv::util::tostr::Printer( ::tsv::util::tostr::Printer::ENUM_PRINT_ARGS, { MACRO_TOSTR__EXPAND_EACH_VAL(__VA_ARGS__) } ).do_print( __VA_ARGS__ )
+
+// The same as TOSTR_ARGS, but use extended representation of value (could be different for user-defined complex class printers)
+#define TOSTR_ARGS_EXTENDED(...) ::tsv::util::tostr::Printer( ::tsv::util::tostr::Printer::ENUM_PRINT_ARGS_EXTENDED, { MACRO_TOSTR__EXPAND_EACH_VAL(__VA_ARGS__) } ).do_print( __VA_ARGS__ )
+
 
 // Print to string converted concatenation of all given values ( implicitly converted to string using toStr() )
 //   Example:  std::cout << TOSTR_JOIN( str_var, " abc", 3, !func(arg) ) << "\n";
@@ -27,6 +33,11 @@
 //   Output:  res{VALUE_RES} = 3 + !func(arg){RETURN_VALUE_OF_CALL}
 #define TOSTR_EXPR(...) ::tsv::util::tostr::Printer( ::tsv::util::tostr::Printer::ENUM_PRINT_EXPR, { MACRO_TOSTR__EXPAND_EACH_VAL(__VA_ARGS__) } ).do_print( __VA_ARGS__ )
 
+// The same as TOSTR_EXPR, but use extended representation of value (could be different for user-defined complex class printers)
+#define TOSTR_EXPR_EXTENDED(...) ::tsv::util::tostr::Printer( ::tsv::util::tostr::Printer::ENUM_PRINT_EXPR_EXTENDED, { MACRO_TOSTR__EXPAND_EACH_VAL(__VA_ARGS__) } ).do_print( __VA_ARGS__ )
+
+/************************* Implementation ***********************************/
+
 namespace tsv {
 namespace util{
 namespace tostr{
@@ -35,7 +46,7 @@ namespace tostr{
 class Printer
 {
 public:
-    enum Mode { ENUM_PRINT_ARGS, ENUM_PRINT_STR, ENUM_PRINT_EXPR };
+    enum Mode { ENUM_PRINT_ARGS, ENUM_PRINT_ARGS_EXTENDED, ENUM_PRINT_STR, ENUM_PRINT_EXPR, ENUM_PRINT_EXPR_EXTENDED };
 
     std::vector<const char*> names_;    // List of variable names (used for ENUM_PRINT_ARGS, ENUM_PRINT_EXPR)
     Mode mode_;                         // Printing mode
@@ -66,21 +77,31 @@ private:
 
     // Recursive parse templates
     template<typename Head, typename... Tail>
-    std::string print( const Head& head, Tail... tail )
+    std::string print( const Head& head, Tail&&... tail )
     {
-        if ( mode_ == ENUM_PRINT_ARGS )
+        if ( mode_ == ENUM_PRINT_ARGS || mode_ == ENUM_PRINT_ARGS_EXTENDED )
         {
             if ( !acc_str_.empty() )
-                acc_str_ += ", ";
-            acc_str_ += std::string(names_[index_]) + " = " + toStr( head, ENUM_TOSTR_REPR );
+            {
+                char prev = names_[index_-1][0];
+                if (  prev != '"' )
+                    acc_str_ += ", ";
+                else
+                    acc_str_ += " ";
+            }
+            char first = names_[index_][0];
+            if (  first == '"' )
+                acc_str_ += toStr( head );
+            else
+                acc_str_ += std::string(names_[index_]) + " = " + toStr( head, mode_==ENUM_PRINT_ARGS ? ENUM_TOSTR_REPR : ENUM_TOSTR_EXTENDED );
         }
-        else if ( mode_ == ENUM_PRINT_EXPR )
+        else if ( mode_ == ENUM_PRINT_EXPR || mode_ == ENUM_PRINT_EXPR_EXTENDED )
         {
             char first = names_[index_][0];
             if (  first == '"' || ( first >= '0' && first <= '9' ) )
                 acc_str_ += toStr( head ) + " ";
             else
-                acc_str_ += std::string(names_[index_]) + "{" + toStr( head, ENUM_TOSTR_REPR ) + "} ";
+                acc_str_ += std::string(names_[index_]) + "{" + toStr( head,  mode_==ENUM_PRINT_EXPR ? ENUM_TOSTR_REPR : ENUM_TOSTR_EXTENDED  ) + "} ";
         }
         else if ( mode_ == ENUM_PRINT_STR )
         {

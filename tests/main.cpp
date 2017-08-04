@@ -1,53 +1,46 @@
 #include <iostream>
-#include "../tostr.h"
 
 /************** TEST **********/
 
 using namespace std;
-using namespace tsv::util::tostr;
 
-// TEST
-struct TempClass
+bool test( bool& isOkTotal, const char* prefix, std::string val, const char* compare = nullptr, bool equal = true )
 {
-    int x;
-};
+    std::cout << prefix << val << "\n";
+    if ( compare == nullptr )
+        return true;
 
-int add( int a, int b )
-{
-    return a + b;
+    bool isOk = ( val == compare );
+    if ( !equal )
+        isOk = !isOk;
+    isOkTotal = isOkTotal && isOk;
+    if ( !isOk )
+    {
+        std::cout << "TEST FAIL! Should be " << compare << "\n";
+    }
+    return isOk;
 }
 
+// Declaration from another test_*.cpp
+bool test_tostr();
+bool test_sentry();
+bool test_objlog();
+bool test_watcher();
+
+/**************** MAIN() ***************/
 int main()
 {
-    int x = 10;
-    TempClass c;
-    const char* vv = "str";
-    std::string ss( "std::string");
+    std::cout<< "\n *** TOSTR module ***\n";
+    test_tostr();
 
-    std::cout << "\n" << toStr(x);
-    std::cout << "\n" << toStr(15);
-    std::cout << "\n" << toStr("literal");
-    std::cout << "\n" << toStr(vv);
-    std::cout << "\n" << toStr(ss);
-    std::cout << "\n\nPointers:";
-    std::cout << "\n" << hex_addr(vv);
-    std::cout << "\n" << toStr( &vv );
-    std::cout << "\n" << toStr( (void*)vv );
-    std::cout << "\n" << toStr( nullptr );
-    std::cout << "\n" << toStr( &ss );
+    std::cout<< "\n *** DEBUGLOG module ***\n";
+    test_sentry();
 
-    std::cout << "\n\nObjects:";
-    std::cout << "\n" << toStr( c );
-    std::cout << "\n" << toStr( &c );
+    std::cout<< "\n *** OBJLOG module ***\n";
+    test_objlog();
 
-    std::cout << "\n\nMacro:";
-    std::cout << "\n" << TOSTR_ARGS( x, "15", vv, c, add(x,13) );
-    std::cout << "\n" << TOSTR_JOIN( x, "15", vv, c, add(x,13) );
-
-    int res = 3 + add(x,13);
-    std::cout << "\n" << TOSTR_EXPR( res, "=", 3, "+", add(x,13) );
-
-    std::cout << "\n";
+    std::cout<< "\n *** DEBUGWATCH module ***\n";
+    test_watcher();
 
     return 0;
 }
