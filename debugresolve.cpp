@@ -1,6 +1,5 @@
 /*********************************************************************
   Purpose:  Resolving symbols and calltrace
-
   Author: Taranenko Sergey (tsvstar@gmail.com)
   Date: 02-Aug-2017
   License: BSD. See License.txt
@@ -16,10 +15,15 @@
 #include "tostr.h"
 #include <string>
 #include <cstdlib>
+#include <cstring>      //strlen
 #include <memory>
 #include <unordered_map>
 #if BACKTRACE_AVAILABLE
 #include <execinfo.h>
+#endif
+
+#if ADDR2LINE_AVAILABLE
+#include <signal.h>     // kill()
 #endif
 
 #ifdef __GNUG__
@@ -168,7 +172,8 @@ class Addr2LineResolver
         }
 
         std::string request( void* addr, bool addLineNum );
-        static bool isStopWord( const std::string& funcname );
+        static bool isStopWord( const std::string& funcname )
+            { return ::tsv::debug::settings::isStopWord( funcname ); }
 
    private:
         std::unordered_map<void*,std::string> cache_;
@@ -181,7 +186,7 @@ class Addr2LineResolver
         static pid_t popen2( const char *command, int *infp, int *outfp );
         void pipe_say();
         void pipe_getline();
-        static bool checkstopwords()
+        static bool checkstopwords();
 
 };
 
@@ -193,7 +198,7 @@ std::string Addr2LineResolver::request( void* addr, bool addLineNum )
     if ( !addr )
         return "nullptr";
 
-    auto addrCache = ( addrLineNum ? cacheWithLines_ : cache_ );
+    auto addrCache = ( addLineNum ? cacheWithLines_ : cache_ );
 
     auto it = addrCache.find( addr );
     if ( it != addrCache.end() )
@@ -331,7 +336,7 @@ static Addr2LineResolver a2l_resolver;
 ***************************************************************************/
 
 // AUX: Simple quick hash
-uint64_t FNV1aHash ( const unisgned char *buf, uint64_t len )
+uint64_t FNV1aHash ( const unsigned char *buf, uint64_t len )
 {
   uint64_t hval = 0x811c9dc5;
 
@@ -360,9 +365,9 @@ std::string collapseNames( const std::vector<std::string>& func_names )
 
     for ( int i=0; i<=lastIdx; i++)
     {
-        if ( i==btNumLeadFuncs && lastIdx>btNumLeadFuncs )
+        if ( i == ::tsv::debug::settings::btNumLeadFuncs && lastIdx > ::tsv::debug::settings::btNumLeadFuncs )
         res += " - ...";
-        if ( i >= btNumLeadFuncs && i < lastIdx )
+        if ( i >= ::tsv::debug::settings::btNumLeadFuncs && i < lastIdx )
             continue;
         std::string fname( func_names[i] );
         found = fname.find_first_of( " (" );
@@ -384,7 +389,7 @@ std::string collapseNames( const std::vector<std::string>& func_names )
 std::string resolveAddr2Name( void* addr, bool addLineNum /*=false*/ )
 {
 #if ADDR2LINE_AVAILABLE
-    return symbol_resolve::a2l_resolver.request( addr, addrLineNum );
+    return symbol_resolve::a2l_resolver.request( addr, addLineNum );
 #else
     return ::tsv::util::tostr::hex_addr( addr );
 #endif
@@ -423,16 +428,16 @@ std::vector<std::string> getBackTrace( int depth /*=-1*/, int skip /*=0*/, bool 
     int size = backtrace( array, depth );
 
     // Remember printed backtraces and later use its id only
-    if ( its::debug::settings::btShortList || its::debug::settings::btShortListOnly )
+    if ( ::tsv::debug::settings::btShortList || ::tsv::debug::settings::btShortListOnly )
     {
-        static std::map< uint64_t, std::pair< std::string, int > > cachedStackTrace;
-        uint64_t key = makeKey( array, size );
+        static std::unordered_map< uint64_t, std::pair< std::string, int > > cachedStackTrace;
+        uint64_t key = symbol_resolve::makeKey( array, size );
         auto it = cachedStackTrace.find( key );
         if ( it != cachedStackTrace.end() )
         {
             // This stacktrace was already mentioned. Use short notation only
             auto& value = it->second;
-            return_value.push_back( strfmt( "StackTrace#%d - repeated: %s", value.second, value.first.c_str() ) );
+            return_value.push_back( ::tsv::util::tostr::strfmt( "StackTrace#%d - repeated: %s", value.second, value.first.c_str() ) );
             return return_value;
         }
 
@@ -442,34 +447,34 @@ std::vector<std::string> getBackTrace( int depth /*=-1*/, int skip /*=0*/, bool 
         std::vector<std::string> tracedNames;
         for ( int i = skip; i < depth; i++ )
         {
-            std::string fnname(  a2l_resolver.request( array[i], btIncludeLine ) );
-            if ( !fnname.length() || a2l_resolver.isStopWord( fnname ) )
+            std::string fnname(  symbol_resolve::a2l_resolver.request( array[i], ::tsv::debug::settings::btIncludeLine ) );
+            if ( !fnname.length() || symbol_resolve::a2l_resolver.isStopWord( fnname ) )
                break;
             tracedNames.push_back( fnname );
         }
 
         // (b) Create short notation and remember it
-        std::string shortName( collapseNames( tracedNames ) );
+        std::string shortName( symbol_resolve::collapseNames( tracedNames ) );
         int stackTraceId = cachedStackTrace.size()+1;
         cachedStackTrace[ key ] = std::make_pair( shortName, stackTraceId );
 
-        return_value.push_back( strfmt( " .. StackTrace#%d : %s", stackTraceId, shortName.c_str() ) );
+        return_value.push_back( ::tsv::util::tostr::strfmt( " .. StackTrace#%d : %s", stackTraceId, shortName.c_str() ) );
     }
 
     // If only short notation is requested, return it
-    if ( its::debug::settings::btShortListOnly )
+    if ( ::tsv::debug::settings::btShortListOnly )
         return return_value;
 
     // Fill lines-by-line stacktrace
     for ( int i = skip; i < depth; i++ )
     {
-        std::string fnname( symbol_resolve::a2l_resolver.request( array[i], btIncludeLine ) );
-        if ( !fnname.length() || a2l_resolver.isStopWord( fnname ) )
+        std::string fnname( symbol_resolve::a2l_resolver.request( array[i], ::tsv::debug::settings::btIncludeLine ) );
+        if ( !fnname.length() || symbol_resolve::a2l_resolver.isStopWord( fnname ) )
            break;
-        if ( btIncludeAddr )
-            return_value.push_back( strfmt( " .. #%02d[%p] %s", i, array[i], fnname.c_str() ) );
+        if ( ::tsv::debug::settings::btIncludeAddr )
+            return_value.push_back( ::tsv::util::tostr::strfmt( " .. #%02d[%p] %s", i, array[i], fnname.c_str() ) );
         else
-            return_value.push_back( strfmt( " .. #%02d %s", i, array[i], fnname.c_str() ) );
+            return_value.push_back( ::tsv::util::tostr::strfmt( " .. #%02d %s", i, array[i], fnname.c_str() ) );
     }
     return return_value;
 #endif

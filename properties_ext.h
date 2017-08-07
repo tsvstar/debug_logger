@@ -2,7 +2,7 @@
 #define PROPERTIES_EXT_H 1
 
 /* Zero-overhead CPP properties (hidden getter/setter) by pippijn
-   ( get only "prop", not "prop_value" class )
+   ( get only "prop" class and modify it )
    http://xinutec.org/~pippijn/home/programming/cpp/properties
 */
 

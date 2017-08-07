@@ -1,6 +1,13 @@
 #ifndef DEBUGWATCH_H_
 #define DEBUGWATCH_H_
 
+/*********************************************************************
+  Purpose:  Watching access to built-in typed class members
+  Author: Taranenko Sergey (tsvstar@gmail.com)
+  Date: 06-Aug-2017
+  License: BSD. See License.txt
+**********************************************************************/
+
 #include "properties_ext.h"
 #include "debuglog.h"
 

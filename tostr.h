@@ -114,9 +114,9 @@ private:
 
 };
 
-}	// tostr
-}	// util
-}	// tsv
+} // end of namespace tostr
+} // end of namespace util
+} // end of namespace tsv
 
 /****************  Auxilarly macros ******************/
 

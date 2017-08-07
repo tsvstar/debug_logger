@@ -3,7 +3,6 @@
 
 /*********************************************************************
   Purpose:  Resolving symbols and calltrace
-
   Author: Taranenko Sergey (tsvstar@gmail.com)
   Date: 02-Aug-2017
   License: BSD. See License.txt
