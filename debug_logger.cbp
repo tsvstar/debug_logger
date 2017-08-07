@@ -26,7 +26,6 @@
 		<Unit filename="debugresolve.h" />
 		<Unit filename="debuglog.cpp" />
 		<Unit filename="debuglog.h" />
-		<Unit filename="debugwatch.cpp" />
 		<Unit filename="debugwatch.h" />
 		<Unit filename="objlog.cpp" />
 		<Unit filename="objlog.h" />

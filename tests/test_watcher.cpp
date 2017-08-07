@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstdio>
+#include <cstddef>
 
 #include <vector>
 #include <fstream>
@@ -30,19 +31,25 @@ namespace {
 
 struct Base
 {
-    Base() : s__("1") {}
+    Base() : s_( "1" ) {}
     ~Base() {}
     Base& operator=( const Base& b ) {return *this; }
-    std::string s__;
 
-    def_prop (std::string, Base, s_,
+    // Define std::string s__ and wrapper property s_
+    def_prop_watch( Base, std::string, s_, s__, 0, ::tsv::util::tostr::ENUM_TOSTR_REPR );
+
+    /* Actually that is short short notation of
+    std::string s__;
+    def_prop (Base, std::string, s_,
         {
-          return ::tsv::debug::Watch_Getter( self, "s_", self.s__, 0, ::tsv::util::tostr::ENUM_TOSTR_REPR );
+          return ::tsv::debug::Watch_Getter( self, "s_", self.s__, 0, ::tsv::util::tostr::ENUM_TOSTR_REPR, comment );
         },
         {
-          ::tsv::debug::Watch_Setter( self, "s_", self.s__, value, 0, ::tsv::util::tostr::ENUM_TOSTR_REPR );
+          ::tsv::debug::Watch_Setter( self, "s_", self.s__, value, 0, ::tsv::util::tostr::ENUM_TOSTR_REPR, comment );
+          self.s__ = value;
         }
       );
+    */
 
 };
 
@@ -66,8 +73,6 @@ int test_watcher()
     std::string vv = std::string(b.s_) + "y" ;
 
 
-
-    // Construction doesn't trigger
     Deriv* p = static_cast<Deriv*>(new Base());
     Deriv v;
     //TODO: Why here operation= wasn't triggered ??

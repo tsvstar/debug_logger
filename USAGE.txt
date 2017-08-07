@@ -1,7 +1,7 @@
 Library consists of four modules:
    tostr       - Get as string values of variables and expressions with names
    debuglog    - Scope/function enter/exit and regular logging (including stacktrace)
-TODO:debug_watch - "property" extension. Watch access/modify to class members of built-in types.
+   debug_watch - "property" extension. Watch access/modify to class members of built-in types.
                  Watch where we use member which have no setter/getter and have a lot of occurences.
    debugobjlog - Tracking of objects lifecycle.
 		 Lightweight leak/double free catching, tracking objects usage.
@@ -272,13 +272,38 @@ See tests/test_objlog.cpp
 
    SETTINGS
    If flag ObjLogger::includeContextName_s is true - then {contextname} will be included into stacktrace, otherwise just spaces
-                        	
 
 
 5. DEBUGWATH module
 ===================
-Documents TODO
+
+   To log access to members which are built-in types property mechanizm could be used:
+
+   1. Add include 
+      # include "debugwatch.h"
+
+   2. Comment out member
+      // int member_;
+
+   3A. Add below macro definition of property
+      // Create property "member_" which is wrapper for "int member_real"
+      // And track all access to it, with writing involved values in REPR mode and context stacktrace with depth 3 frames
+      // See argument details in #define def_prop_watch
+      def_prop_watch( OwnerClass, int, member_, member_real_, 3, ::tsv::util::tostr::ENUM_TOSTR_REPR );
+
+   3B. Or if you only interested to see changes, not read access you can do following
+      // Declare underlying real member
+      int member_real_;
+      // Define property with custom setter/getter
+      //  * getter just return value
+      //  * setter track access with no callstack (0) and no value tracking
+      def_prop( int, OwnerClass, member_,
+                { return self.member_real__; },
+                { ::tsv::debug::Watch_Setter( self, "member_", self.member_real_, value, 0, -1, comment ); }
+              );
+
 
 TODO - watched property have to be able to included into TOSTR_* macro
 TODO - no imlicit conversion. so (obj.str_prop + "") doesn't work. have to rewrite std::string(obj.str_prop)
+TODO - watch static/global/local variables
 
