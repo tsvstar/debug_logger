@@ -242,8 +242,13 @@ Examples are placed in tests/test_sentry.cpp
     std::string s = resolveAddr2Name( func_addr, includeLineNo_Bool /*= false*/ );
 
     // Determine which one virtual function will be called for given object
+    // See an example test/test_objlog.cpp
     // (looks like this trick works only in GCC)
-    std::string s = WHICH_FUNC_WILL_BE_CALLED( obj->virtualFunc );
+    SAY_DBG( "CALL %s", ::tsv::debug::resolveAddr2Name( WHICH_FUNC_WILL_BE_CALLED( BaseClass, obj, virtualFunc ), 
+                               false, 		// do not include lineno
+                               true             // show hex addr of function
+                               ).c_str() );
+    obj->virtualFunc();
 
 4. OBJLOG module
 ===================

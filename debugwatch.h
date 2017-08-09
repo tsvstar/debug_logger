@@ -58,12 +58,13 @@ const T& Watch_Getter( const OwnerClass& self, const char* membername, const T& 
     else
       comment = "";
     if ( showValues >= 0 )
-        SentryLogger::print_event( "%s%sGet %s{0x%p}.%s ( %s )", comment, suffix_comment, type_name.c_str(), &self, membername,
+        SentryLogger::print_event( "%s%sGET %s{0x%p}.%s ( %s )", comment, suffix_comment, type_name.c_str(), &self, membername,
                                         ::tsv::util::tostr::toStr( val, showValues ).c_str() );
     else
-        SentryLogger::print_event( "%s%sGet %s{0x%p}.%s", comment, suffix_comment, type_name.c_str(), &self, membername );
+        SentryLogger::print_event( "%s%sGET %s{0x%p}.%s", comment, suffix_comment, type_name.c_str(), &self, membername );
     if ( backTraceDepth )
-        SentryLogger::printBackTrace( backTraceDepth, 1 );
+        // print calltrace with excluding three extra frames: this, prop_set, and prop::operator
+        SentryLogger::printBackTrace( backTraceDepth + 3, 1 );
     return val;
 }
 
@@ -89,15 +90,16 @@ T& Watch_Setter( const OwnerClass& self, const char* membername, T& existed_val,
     else
       comment = "";
     if ( showValues >= 0 )
-        SentryLogger::print_event( "%s%sSet %s{0x%p}.%s ( %s%s%s )", comment, suffix_comment, type_name.c_str(), &self, membername,
+        SentryLogger::print_event( "%s%sSET %s{0x%p}.%s ( %s%s%s )", comment, suffix_comment, type_name.c_str(), &self, membername,
                                             ::tsv::util::tostr::toStr( existed_val, showValues ).c_str(),
                                             ((&existed_val==&new_val)? "" : " ==> " ),
                                             ((&existed_val==&new_val)? "" : (::tsv::util::tostr::toStr( new_val, showValues ).c_str()))
                                   );
     else
-        SentryLogger::print_event( "%s%sSet %s{0x%p}.%s", comment, suffix_comment, type_name.c_str(), &self, membername );
+        SentryLogger::print_event( "%s%sSET %s{0x%p}.%s", comment, suffix_comment, type_name.c_str(), &self, membername );
     if ( backTraceDepth )
-        SentryLogger::printBackTrace( backTraceDepth, 1 );
+        // print calltrace with excluding three extra frames: this, prop_set, and prop::operator
+        SentryLogger::printBackTrace( backTraceDepth + 3, 1 );
     return existed_val;
 }
 

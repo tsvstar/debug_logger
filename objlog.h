@@ -50,7 +50,7 @@ class ObjLogger
 
     public:
         // Settings
-        //static bool useNested_s;  // true if you would like to align with ItsSentryLogger output
+        //static bool useNested_s;  // true if you would like to align with SentryLogger output
         static bool includeContextName_s;   // if true, then logging will include current context name
 
     public:

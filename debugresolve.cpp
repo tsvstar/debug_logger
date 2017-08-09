@@ -12,6 +12,7 @@
 #define ADDR2LINE_AVAILABLE 0
 
 #include "debugresolve.h"
+#include "debuglog.h"
 #include "tostr.h"
 #include <string>
 #include <cstdlib>
@@ -171,13 +172,22 @@ class Addr2LineResolver
             }
         }
 
-        std::string request( void* addr, bool addLineNum );
+
+        struct CacheEntry
+        {
+            std::string funcName_;
+            std::string pathName_;
+            std::string getFuncAndLine() { return funcName_ + pathName_; }
+            std::string getSymbol( bool includeLine ) { return includeLine ? (funcName_ + pathName_) : funcName_; }
+        };
+
+        CacheEntry request( void* addr );
+
         static bool isStopWord( const std::string& funcname )
             { return ::tsv::debug::settings::isStopWord( funcname ); }
 
    private:
-        std::unordered_map<void*,std::string> cache_;
-        std::unordered_map<void*,std::string> cacheWithLines_;
+        std::unordered_map< void*, CacheEntry > addrCache_;
         char  buf_[512];
         pid_t child_pid_;       // 0=do not exists yet, <0=failed
         int   pipefd_[2];       // [0]=to say child, [1]=listen child
@@ -191,17 +201,14 @@ class Addr2LineResolver
 };
 
 // Main method: ask child and parse answer about name/line
-// NOTE: return empty string if match to one of stop word
-std::string Addr2LineResolver::request( void* addr, bool addLineNum )
+Addr2LineResolver::CacheEntry Addr2LineResolver::request( void* addr )
 {
     // Protection check
     if ( !addr )
-        return "nullptr";
+        return { "nullptr", "" };
 
-    auto addrCache = ( addLineNum ? cacheWithLines_ : cache_ );
-
-    auto it = addrCache.find( addr );
-    if ( it != addrCache.end() )
+    auto it = addrCache_.find( addr );
+    if ( it != addrCache_.end() )
          return it->second;
 
     if ( child_pid_ == 0 )
@@ -211,31 +218,37 @@ std::string Addr2LineResolver::request( void* addr, bool addLineNum )
             if ( child_pid_ <= 0)
         {
             perror("popen2 fail:");
-            printf( "Unable to exec: rv=%d\n", child_pid_ );
+            SAY_DBG( "Unable to exec: rv=%d\n", child_pid_ );
             child_pid_=-1;
         }
     }
     if ( child_pid_ <= 0 )
-         return "{no info}";
+         return { "{no info}", "" };
+
     sprintf( buf_, "%p\n", addr );
     pipe_say();
 
-    static const std::string at_str(" at ");
     pipe_getline();
-    std::string str( buf_ );
+    std::string funcName( buf_ );
+
     pipe_getline();
 
-
-    std::string path ( buf_ );
-    if ( addLineNum && path.find( "??:" ) != 0 )
+    std::string path;
+    if ( path.find( "??:" ) != 0 )
     {
+        path =  buf_ ;
+
         if ( path.find( "/.." ) != std::string::npos )
             path = squeezePath( path );
-        str +=  at_str + path;
-    }
 
-    addrCache[ addr ] = str;
-    return str;
+        static const std::string at_str(" at ");
+        path =  at_str + path;
+    } 
+
+    CacheEntry entry { funcName, path };
+
+    addrCache_[ addr ] = entry;
+    return entry;
 }
 
 // Run command and bind with pipes to descriptors *infp/*outfp
@@ -386,10 +399,13 @@ std::string collapseNames( const std::vector<std::string>& func_names )
 /***************** END OF local aux functions *******************************/
 
 
-std::string resolveAddr2Name( void* addr, bool addLineNum /*=false*/ )
+std::string resolveAddr2Name( void* addr, bool addLineNum /*=false*/, bool includeHexAddr /*= false */ )
 {
 #if ADDR2LINE_AVAILABLE
-    return symbol_resolve::a2l_resolver.request( addr, addLineNum );
+    auto symbolEntry = symbol_resolve::a2l_resolver.request( addr );
+    if ( !includeHexAddr )
+        return symbolEntry.getSymbol( addLineNum );
+    return ::tsv::util::tostr::hex_addr( addr ) + " " +symbolEntry.getSymbol( addLineNum );
 #else
     return ::tsv::util::tostr::hex_addr( addr );
 #endif
@@ -430,35 +446,41 @@ std::vector<std::string> getBackTrace( int depth /*=-1*/, int skip /*=0*/, bool 
     // Remember printed backtraces and later use its id only
     if ( ::tsv::debug::settings::btShortList || ::tsv::debug::settings::btShortListOnly )
     {
+        // cachedStackTrace[ calltrace_hash ] = { short_notation_str, callstack_id_int }
         static std::unordered_map< uint64_t, std::pair< std::string, int > > cachedStackTrace;
+
         uint64_t key = symbol_resolve::makeKey( array, size );
         auto it = cachedStackTrace.find( key );
         if ( it != cachedStackTrace.end() )
         {
-            // This stacktrace was already mentioned. Use short notation only
+            // This stacktrace was already mentioned -- USE SHORT NOTATION ONLY (to make shorter output)
             auto& value = it->second;
             return_value.push_back( ::tsv::util::tostr::strfmt( "StackTrace#%d - repeated: %s", value.second, value.first.c_str() ) );
             return return_value;
         }
-
-        // This stacktrace wasn't mentioned before. Remember it
-
-        // (a) create function name list
-        std::vector<std::string> tracedNames;
-        for ( int i = skip; i < depth; i++ )
+        else
         {
-            std::string fnname(  symbol_resolve::a2l_resolver.request( array[i], ::tsv::debug::settings::btIncludeLine ) );
-            if ( !fnname.length() || symbol_resolve::a2l_resolver.isStopWord( fnname ) )
-               break;
-            tracedNames.push_back( fnname );
+            // This stacktrace wasn't mentioned before. Remember it
+
+            // (a) create function name list
+            std::vector<std::string> tracedNames;
+            for ( int i = skip; i < depth; i++ )
+            {
+                auto symbolEntry = symbol_resolve::a2l_resolver.request( array[i] );
+                if ( !symbolEntry.funcName_.length() )
+                   break;
+                tracedNames.push_back( symbolEntry.funcName_ );
+                if ( symbol_resolve::a2l_resolver.isStopWord( symbolEntry.funcName_ ) )
+                   break;
+            }
+
+            // (b) Create short notation and remember it
+            std::string shortName( symbol_resolve::collapseNames( tracedNames ) );
+            int stackTraceId = cachedStackTrace.size()+1;
+            cachedStackTrace[ key ] = std::make_pair( shortName, stackTraceId );
+
+            return_value.push_back( ::tsv::util::tostr::strfmt( " .. StackTrace#%d : %s", stackTraceId, shortName.c_str() ) );
         }
-
-        // (b) Create short notation and remember it
-        std::string shortName( symbol_resolve::collapseNames( tracedNames ) );
-        int stackTraceId = cachedStackTrace.size()+1;
-        cachedStackTrace[ key ] = std::make_pair( shortName, stackTraceId );
-
-        return_value.push_back( ::tsv::util::tostr::strfmt( " .. StackTrace#%d : %s", stackTraceId, shortName.c_str() ) );
     }
 
     // If only short notation is requested, return it
@@ -468,13 +490,16 @@ std::vector<std::string> getBackTrace( int depth /*=-1*/, int skip /*=0*/, bool 
     // Fill lines-by-line stacktrace
     for ( int i = skip; i < depth; i++ )
     {
-        std::string fnname( symbol_resolve::a2l_resolver.request( array[i], ::tsv::debug::settings::btIncludeLine ) );
-        if ( !fnname.length() || symbol_resolve::a2l_resolver.isStopWord( fnname ) )
+        auto symbolEntry = symbol_resolve::a2l_resolver.request( array[i] );
+        if ( !symbolEntry.funcName_.length() )
            break;
+
         if ( ::tsv::debug::settings::btIncludeAddr )
-            return_value.push_back( ::tsv::util::tostr::strfmt( " .. #%02d[%p] %s", i, array[i], fnname.c_str() ) );
+            return_value.push_back( ::tsv::util::tostr::strfmt( " .. #%02d[%p] %s", i, array[i], symbolEntry.getSymbol( ::tsv::debug::settings::btIncludeLine ).c_str() ) );
         else
-            return_value.push_back( ::tsv::util::tostr::strfmt( " .. #%02d %s", i, array[i], fnname.c_str() ) );
+            return_value.push_back( ::tsv::util::tostr::strfmt( " .. #%02d %s", i, symbolEntry.getSymbol( ::tsv::debug::settings::btIncludeLine ).c_str() ) );
+        if ( symbol_resolve::a2l_resolver.isStopWord( symbolEntry.funcName_ ) )
+            break;
     }
     return return_value;
 #endif

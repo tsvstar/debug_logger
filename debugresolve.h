@@ -13,7 +13,7 @@
 
 #ifdef __GNUG__
 // Macro to get find out address of virtual function which will be actually called
-#define WHICH_FUNC_WILL_BE_CALLED ( baseclass, obj_ptr, method ) ( obj_ptr ? (void*)(obj_ptr->*(&baseclass::method)) : nullptr )
+#define WHICH_FUNC_WILL_BE_CALLED( baseclass, obj_ptr, method ) ( obj_ptr ? (void*)(obj_ptr->*(&baseclass::method)) : nullptr )
 #endif
 
 namespace tsv{
@@ -22,8 +22,10 @@ namespace debug {
     // Transform type and function names to pretty form
     std::string demangle(const char* name);
 
-    // Resolve pointer "addr" to function name ( if addLineNum, then include "at file:lineno" )
-    std::string resolveAddr2Name( void* addr, bool addLineNum = false );
+    // Resolve pointer "addr" to function name
+    // if addLineNum, then include "at file:lineno" 
+    // if includeHexAddr, then include hex value of pointer
+    std::string resolveAddr2Name( void* addr, bool addLineNum = false, bool includeHexAddr = false );
 
     // Get backtrace
     std::vector<std::string> getBackTrace( int depth = -1, int skip = 0, bool enforce = false );

@@ -36,6 +36,7 @@ public:
     TrackedItem( int x );
 
     int x_;
+    virtual void test() { std::cout<<"TrackedItem.test()\n"; }
 private:
     ::tsv::debug::ObjLogger debug_entry_;
 };
@@ -67,6 +68,7 @@ class DerivedTrackedItem : public TrackedItem
 {
 public:
     int y = 10;
+    virtual void test() { std::cout<<"DerivedTrackedItem.test()\n"; }
 };
 
 /************* Example toStr() extending **********************/
@@ -135,6 +137,11 @@ void test_objlog_body()
         DerivedTrackedItem dt1;
         DerivedTrackedItem* dt2 = new DerivedTrackedItem();
         SAY_ARGS( dt1, dt2 );
+
+	// Example how to determine which virtual function will be called
+        TrackedItem* dt3 = &dt1;
+        SAY_DBG( "CALL %s", ::tsv::debug::resolveAddr2Name( WHICH_FUNC_WILL_BE_CALLED( TrackedItem, dt3, test ), true, true ).c_str() );
+        dt3->test();
     }
     // Leak dt2 here
 
