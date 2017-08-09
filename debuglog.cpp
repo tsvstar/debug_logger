@@ -352,7 +352,8 @@ SentryLogger& SentryLogger::operator<< ( const LoggerEvent& val )
 //===================================================
 void SentryLogger::printBackTrace( int depth /*=-1*/, int skip /*=0*/, bool enforce /*=false*/ )
 {
-    auto array = ::tsv::debug::getBackTrace();
+    // ask for backtrace (and ignore this function)
+    auto array = ::tsv::debug::getBackTrace( depth, skip+1, enforce );
     for ( auto& s : array )
     {
         vwrite( s );

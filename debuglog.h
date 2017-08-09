@@ -55,12 +55,12 @@ NOTES:
 
 #if DEBUG_LOGGING
 
-#define SENTRY_SILENT        using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", LOG_EVENTS );               SentryLoggerEmpty::empty_func
+#define SENTRY_SILENT        using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", LOG_EVENTS );               ::tsv::debug::SentryLoggerEmpty::empty_func
 #define SENTRY_FUNC          using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", LOG_ALL|LOG_NO_AUTOENTER);  sentry.print_enter
 #define SENTRY_FUNC_W_ARGS(...)  SENTRY_FUNC( TOSTR_ARGS( __VA_ARGS__ ) )
 #define SENTRY_ALT_FUNC(val)     using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", val | LOG_NO_AUTOENTER );   sentry.print_enter
-#define SENTRY_FNSTREAM()        using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", LOG_ALL|LOG_NO_AUTOENTER ); sentry<<LoggerEvent(LOG_ENTER)<<"Enter "
-#define SENTRY_ALT_FNSTREAM(val) using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", val|LOG_NO_AUTOENTER );     sentry<<LoggerEvent(LOG_ENTER)<<"Enter "
+#define SENTRY_FNSTREAM()        using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", LOG_ALL|LOG_NO_AUTOENTER ); sentry<<::tsv::debug::LoggerEvent(LOG_ENTER)<<"Enter "
+#define SENTRY_ALT_FNSTREAM(val) using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( __func__, "", val|LOG_NO_AUTOENTER );     sentry<<::tsv::debug::LoggerEvent(LOG_ENTER)<<"Enter "
 #define SENTRY_CONTEXT( contextname,...)  using namespace ::tsv::debug::SentryLoggerFlags; ::tsv::debug::SentryLogger sentry( contextname, "", LOG_ALL|LOG_NO_AUTOENTER ); sentry.print_enter( __VA_ARGS__ )
 
 #define SAY_STACKTRACE  ::tsv::debug::SentryLogger::printBackTrace

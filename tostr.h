@@ -76,37 +76,63 @@ private:
     }
 
     // Recursive parse templates
+    // Note: use formatters instead of plain branches to make only one instantiation of toStr
+    //   [to minimize error output in case if something goes wrong]
     template<typename Head, typename... Tail>
     std::string print( const Head& head, Tail&&... tail )
     {
+        int modeToStr = ENUM_TOSTR_DEFAULT; // token representation mode
+        int asisFlag = true;                // print as is or not?
+        const char* betweenToken = " = ";   // token inserted between name and value
+        const char* suffix = "";            // token added after value
+
+        // 1. Tune output format + print separator if needed
         if ( mode_ == ENUM_PRINT_ARGS || mode_ == ENUM_PRINT_ARGS_EXTENDED )
         {
+            // add separator
             if ( !acc_str_.empty() )
             {
                 char prev = names_[index_-1][0];
-                if (  prev != '"' )
-                    acc_str_ += ", ";
-                else
-                    acc_str_ += " ";
+                acc_str_ += ( (  prev != '"' ) ? ", " : " " );
             }
-            char first = names_[index_][0];
-            if (  first == '"' )
-                acc_str_ += toStr( head );
-            else
-                acc_str_ += std::string(names_[index_]) + " = " + toStr( head, mode_==ENUM_PRINT_ARGS ? ENUM_TOSTR_REPR : ENUM_TOSTR_EXTENDED );
+
+            // tune format
+            char first = names_[index_][0];     // first symbol of #arg (detect literals and numbers)
+            modeToStr = ( mode_==ENUM_PRINT_ARGS ? ENUM_TOSTR_REPR : ENUM_TOSTR_EXTENDED );
+            asisFlag = ( first == '"' );
+            //betweenToken = " = ";         //use default: " = " between name and value
+            //suffix = "";                  //use default "" after value
         }
         else if ( mode_ == ENUM_PRINT_EXPR || mode_ == ENUM_PRINT_EXPR_EXTENDED )
         {
-            char first = names_[index_][0];
-            if (  first == '"' || ( first >= '0' && first <= '9' ) )
-                acc_str_ += toStr( head ) + " ";
+            // tune format
+            char first = names_[index_][0];     // first symbol of #arg (detect literals and numbers)
+            modeToStr = ( mode_==ENUM_PRINT_EXPR ? ENUM_TOSTR_REPR : ENUM_TOSTR_EXTENDED );
+            asisFlag = (  first == '"' || ( first >= '0' && first <= '9' ) );
+            if ( !asisFlag )
+            {
+                betweenToken = "{";         //between name and value
+                suffix = "} ";              //after value
+            }
             else
-                acc_str_ += std::string(names_[index_]) + "{" + toStr( head,  mode_==ENUM_PRINT_EXPR ? ENUM_TOSTR_REPR : ENUM_TOSTR_EXTENDED  ) + "} ";
+            {
+                //betweenToken = "nomatter";
+                suffix = " ";
+            }
         }
-        else if ( mode_ == ENUM_PRINT_STR )
+        else
         {
-            acc_str_ += toStr( head, ENUM_TOSTR_DEFAULT );
+            // tune format
+            //modeToStr = ENUM_TOSTR_DEFAULT;// use default: print values as STR
+            //asisFlag = ASIS;               // use default: always print as is
+            //betweenToken = "no matter";    // use default: because have no matter
+            //suffix = "";                   // use default: because have no matter
         }
+
+        // 2. Do output
+        if ( !asisFlag )
+            acc_str_ += std::string(names_[index_]) + betweenToken;
+        acc_str_ += toStr( head, asisFlag ? ENUM_TOSTR_DEFAULT : modeToStr ) + suffix;
 
         index_++;
         return print( std::forward<Tail>( tail )... );

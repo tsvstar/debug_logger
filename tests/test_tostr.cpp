@@ -49,9 +49,9 @@ bool test_tostr()
                                         // so just print not test
     test( isOk, "", toStr( &c ) );   // address could differ, so just print not test
 
-    std::cout << "\n\nMacro:";
+    std::cout << "\n\nMacro:\n";
     test( isOk, "", TOSTR_ARGS( x, "15", vv, add(x,13) ),
- 		"x = 10, \"15\" = \"15\", vv = \"str\", add(x,13) = 23" );
+ 		"x = 10, 15 vv = \"str\", add(x,13) = 23" );
     test( isOk, "", TOSTR_JOIN( x, "15", vv, add(x,13) ), "1015str23" );
 
     int res = 3 + add(x,13);

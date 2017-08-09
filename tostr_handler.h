@@ -78,18 +78,18 @@ struct ToStringRV
 };
 
 // Default handler
-template<typename T,
-    typename std::enable_if< !std::is_arithmetic<T>::value, int >::type* = nullptr >
-ToStringRV __toString( const T& value, int mode )
+template<typename T>
+typename std::enable_if< !std::is_arithmetic<T>::value, ToStringRV >::type
+__toString( const T& value, int mode )
 {
     // default case - generic kind of type
     return { "", false };   // no value
 }
 
 // Integral + floating_point handler
-template<typename T,
-    typename std::enable_if< std::is_arithmetic<T>::value, int >::type* = nullptr >
-ToStringRV __toString( const T& value, int mode )
+template<typename T>
+typename std::enable_if< std::is_arithmetic<T>::value, ToStringRV >::type
+__toString( const T& value, int mode )
 {
 #if CPP11_FEATURES
     return { std::to_string( value ), true };
@@ -158,9 +158,9 @@ Usage:
     std::string val = toStr( var, ENUM_TOSTR_EXTENDED );
 ************************************************/
 // Main implementation for values
-template<typename T,
-    typename std::enable_if< !std::is_pointer<T>::value, int >::type* = nullptr >
-std::string toStr( const T& val, int mode = ENUM_TOSTR_DEFAULT  )
+template<typename T>
+typename std::enable_if< !std::is_pointer<T>::value, std::string >::type
+toStr( const T& val, int mode = ENUM_TOSTR_DEFAULT  )
 {
     auto decoded = impl::__toString( val, mode );
     if ( !decoded.valid_ )
@@ -174,7 +174,6 @@ std::string toStr( const T& val, int mode = ENUM_TOSTR_DEFAULT  )
 
 // Main implementation for pointers
 template<typename T>
-//    typename std::enable_if< std::is_pointer<T*>::value, int >::type* = nullptr >
 std::string toStr( const T* val, int mode = ENUM_TOSTR_DEFAULT  )
 {
     if ( !val )

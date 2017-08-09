@@ -34,6 +34,7 @@
 		<Unit filename="tests/test_objlog.cpp" />
 		<Unit filename="tests/test_sentry.cpp" />
 		<Unit filename="tests/test_tostr.cpp" />
+		<Unit filename="tests/test_watcher.cpp" />
 		<Unit filename="tostr.h" />
 		<Unit filename="tostr_handler.cpp" />
 		<Unit filename="tostr_handler.h" />
